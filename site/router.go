@@ -3,7 +3,7 @@ package site
 import (
 	// "encoding/json"
 	// "errors"
-	// "fmt"
+	"fmt"
 	"html/template"
 	// "log"
 	// "net"
@@ -47,6 +47,8 @@ func handleQuizPage(router *mux.Router) {
 	quizTemplate := templateOnBase("templates/_quiz.html")
 	router.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
 		data := map[string]interface{}{}
+
+	    fmt.Printf("test: %v\n", getQuiz())
 
 		if err := quizTemplate.Execute(writer, templateParamsOnBase(data, request)); err != nil {
 			serverError(writer, err)
