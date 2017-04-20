@@ -1,1 +1,8 @@
-# colloquium_presentation_website
+# Colloquium Presentation Website
+
+### Building
+
+```{shell}
+./run.sh
+```
+
