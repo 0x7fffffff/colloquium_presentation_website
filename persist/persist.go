@@ -203,6 +203,39 @@ func CorrectCountForSessionId(sessionId string) (int, error) {
 	return count, nil
 }
 
-func FindWinners() []string {
-	return nil
+func FindWinners(topN int) ([]string, error) {
+	query := `
+		SELECT session_id
+		FROM question_answer
+		INNER JOIN question
+			ON question_answer.question_id = question.id
+		WHERE question.correct_index = question_answer.answer_index
+		GROUP BY session_id
+		ORDER BY count(*) DESC
+		LIMIT ?;
+	`
+
+	rows, err := DB.Query(query, topN)
+	if err != nil {
+		return nil, err
+	}
+
+	var sessions = make([]string, 0)
+
+	for rows.Next() {
+		var session string
+
+		if err = rows.Scan(&session); err != nil {
+			log.Fatal(err)
+			continue
+		}
+
+		sessions = append(sessions, session)
+	}
+
+	if err = rows.Close(); err != nil {
+		return nil, err
+	}
+
+	return sessions, nil
 }

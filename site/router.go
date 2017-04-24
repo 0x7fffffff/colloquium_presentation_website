@@ -1,16 +1,12 @@
 package site
 
 import (
-	// "encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
-	// "log"
-	// "net"
 	"net/http"
-	// "path"
 	"strconv"
-	// "bytes"
+	"time"
 
 	"github.com/0x7fffffff/colloquium_presentation_website/persist"
 	"github.com/0x7fffffff/colloquium_presentation_website/websocket"
@@ -21,6 +17,7 @@ import (
 var currentQuestion = 0
 var totalQuestions int
 var currentSessionHeaderName string
+var over = false
 
 func init() {
 	questions, err := persist.GetAllQuestions()
@@ -67,6 +64,25 @@ func templateParamsOnBase(new map[string]interface{}, request *http.Request) map
 	return new
 }
 
+func win() {
+	fmt.Println("over. about to sleep")
+	time.Sleep(5 * time.Second)
+	fmt.Println("done sleeping")
+
+	sessions, err := persist.FindWinners(3)
+	if err != nil {
+		return
+	}
+	fmt.Println(sessions)
+	websocket.SocketMessage{
+		Payload: map[string]interface{}{
+			"winners": map[string]interface{}{
+				"sessions": sessions,
+			},
+		},
+	}.Send()	
+}
+
 func handleControlPage(router *mux.Router) {
 	router.HandleFunc("/control", func(writer http.ResponseWriter, request *http.Request) {
 		controlTemplate := templateOnBase("templates/_control.html")
@@ -77,6 +93,11 @@ func handleControlPage(router *mux.Router) {
 	}).Methods("GET")
 
 	router.HandleFunc("/control/next", func(writer http.ResponseWriter, request *http.Request) {
+		if over {
+			writer.WriteHeader(http.StatusOK)
+			return
+		}
+
 		currentQuestion++
 
 		websocket.SocketMessage{
@@ -86,6 +107,11 @@ func handleControlPage(router *mux.Router) {
 				},
 			},
 		}.Send()
+
+		if currentQuestion >= totalQuestions {
+			over = true
+			go win()
+		}
 
 		writer.WriteHeader(http.StatusOK)
 	}).Methods("POST")
@@ -192,6 +218,7 @@ func handleQuizPage(router *mux.Router) {
 
 		data := map[string]interface{}{
 			"Percentage": float64(count) / float64(totalQuestions) * 100.0,
+			"Session": session.Values["token"].(string),
 		}
 
 		if err := scoreTemplate.Execute(writer, templateParamsOnBase(data, request)); err != nil {
