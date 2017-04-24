@@ -50,7 +50,8 @@ func configureDatabase(database *sql.DB) (sql.Result, error) {
 			id integer primary key,
 			body text not null,
 			number integer not null,
-			correct_index integer not null
+			correct_index integer not null,
+			info text not null
 		);
 
 		create table if not exists answer (
