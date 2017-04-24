@@ -13,12 +13,12 @@ function startWebSocket() {
 
         var session = $('#session').attr('data-session-token');
 
-        if ($.inArray(session, sessions)) {
+        if ($.inArray(session, sessions) != -1) {
           document.body.style.backgroundColor = "green";
         } else {
           document.body.style.backgroundColor = "red";
         }
-        
+
         console.log(sessions);
       } else {
         console.log("Received unhandled websocket message type: " + message);        
