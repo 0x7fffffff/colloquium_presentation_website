@@ -60,15 +60,23 @@ func handleControlPage(router *mux.Router) {
 	router.HandleFunc("/control/next", func(writer http.ResponseWriter, request *http.Request) {
 		currentQuestion++
 
-		message := websocket.SocketMessage{
+		websocket.SocketMessage{
 			Payload: map[string]interface{}{
 				"next": map[string]interface{}{
 					"question_number": currentQuestion,
 				},
 			},
-		}
+		}.Send()
 
-		message.Send()
+		writer.WriteHeader(http.StatusOK)
+	}).Methods("POST")
+
+	router.HandleFunc("/control/show", func(writer http.ResponseWriter, request *http.Request) {
+		websocket.SocketMessage{
+			Payload: map[string]interface{}{
+				"show": map[string]interface{}{},
+			},
+		}.Send()
 
 		writer.WriteHeader(http.StatusOK)
 	}).Methods("POST")
@@ -91,14 +99,20 @@ func handleQuizPage(router *mux.Router) {
 
 		quiz := getQuiz()
 
-		if *id > len(quiz) {
-			// show score page
+		if *id > len(quiz) - 1 {
+			http.Redirect(writer, request, "/score", http.StatusSeeOther)
 			return
 		}
 
-		if *id != currentQuestion || *id < 0 {
+		if *id < 0 {
 			clientError(writer, errors.New("Invalid question id"))
 			return
+		}
+
+		if *id != currentQuestion {
+			path := fmt.Sprintf("/question/%v", currentQuestion)
+			http.Redirect(writer, request, path, http.StatusSeeOther)
+			return			
 		}
 
 		data := map[string]interface{}{
@@ -123,7 +137,7 @@ func handleQuizPage(router *mux.Router) {
 		}
 	}).Methods("GET")
 
-	router.HandleFunc("/question/{question_id:[0-9]+}", func(writer http.ResponseWriter, request *http.Request) {
+	router.HandleFunc("/score", func(writer http.ResponseWriter, request *http.Request) {
 		scoreTemplate := templateOnBase("templates/_score.html")
 
 		data := map[string]interface{}{}
@@ -132,13 +146,13 @@ func handleQuizPage(router *mux.Router) {
 		}
 	}).Methods("GET")
 
-	router.HandleFunc("/answer/{answer_id:[0-9]+}", func(writer http.ResponseWriter, request *http.Request) {
+	router.HandleFunc("/question/{question_id:[0-9]+}/answer", func(writer http.ResponseWriter, request *http.Request) {
 		if err := request.ParseForm(); err != nil {
 			clientError(writer, err)
 			return
 		}
 
-		id := identifierFromRequest("answer_id", request)
+		id := identifierFromRequest("question_id", request)
 		if id == nil {
 			clientError(writer, errors.New("Missing question identifier"))
 			return
@@ -164,9 +178,6 @@ func addRoutes() *mux.Router {
 	serveStaticFolder("/fonts/", router)
 
 	websocket.Start(router)
-
-	// router.NotFoundHandler = http.HandlerFunc(generalNotFound)
-	// http.Handle("/", router)
 
 	return router
 }

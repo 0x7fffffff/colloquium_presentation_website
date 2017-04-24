@@ -13,11 +13,12 @@
 <h1 class="question">{{ .Question.Question }}</h1>
   <div class="btn-group-lg btn-group" data-toggle="buttons">
     {{range $index, $element := .Question.Answers }}
+    <br>
     <row>
       <div class="col-lg-6">
         <label class="btn btn-primary">
-          <input type="radio" name="options" id="option1"> {{ $element }}
-        </label>
+          <input class="answer-option" type="radio" name="options" 
+            data-answer-number="{{ $index }}" data-question-number="{{ $.CurrentQuestionIndex }}">&nbsp;&nbsp;&nbsp;{{ $element }}</label>
       </div>
     </row>
     {{ end }}
