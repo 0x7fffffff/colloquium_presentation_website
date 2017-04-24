@@ -20,6 +20,7 @@ import (
 
 var currentQuestion = 0
 var totalQuestions int
+var currentSessionHeaderName string
 
 func init() {
 	questions, err := persist.GetAllQuestions()
@@ -27,6 +28,13 @@ func init() {
 		totalQuestions = 0
 	} else {
 		totalQuestions = len(questions)
+	}
+
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		currentSessionHeaderName = "session"
+	} else {
+		currentSessionHeaderName = "session-" + uuid.String()
 	}
 }
 
@@ -95,6 +103,27 @@ func handleControlPage(router *mux.Router) {
 
 func handleQuizPage(router *mux.Router) {
 	router.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+		session, err := store.Get(request, currentSessionHeaderName)
+		if err != nil {
+			clientError(writer, errors.New("couldn't get session"))
+			return
+		}
+
+		if session.IsNew {
+			uuid, err := uuid.NewV4()
+			if err != nil {
+				serverError(writer, errors.New("Couldn't generate user key"))
+				return
+			}
+
+			session.Values["token"] = uuid.String()
+
+			if err = session.Save(request, writer); err != nil {
+				clientError(writer, errors.New("couldn't update session"))
+				return
+			}		 	
+		} 
+
 		path := fmt.Sprintf("/question/%v", currentQuestion)
 		http.Redirect(writer, request, path, http.StatusSeeOther)
 	}).Methods("GET")
@@ -141,27 +170,6 @@ func handleQuizPage(router *mux.Router) {
 			"Answers": answers,
 		}
 
-		session, err := store.Get(request, "session")
-		if err != nil {
-			clientError(writer, errors.New("couldn't get session"))
-			return
-		}
-
-		if session.IsNew {
-			uuid, err := uuid.NewV4()
-			if err != nil {
-				serverError(writer, errors.New("Couldn't generate user key"))
-				return
-			}
-
-			session.Values["token"] = uuid.String()
-
-			if err = session.Save(request, writer); err != nil {
-				clientError(writer, errors.New("couldn't update session"))
-				return
-			}		 	
-		} 
-
 		if err := quizTemplate.Execute(writer, templateParamsOnBase(data, request)); err != nil {
 			serverError(writer, err)
 		}
@@ -170,7 +178,22 @@ func handleQuizPage(router *mux.Router) {
 	router.HandleFunc("/score", func(writer http.ResponseWriter, request *http.Request) {
 		scoreTemplate := templateOnBase("templates/_score.html")
 
-		data := map[string]interface{}{}
+		session, err := store.Get(request, currentSessionHeaderName)
+		if err != nil {
+			clientError(writer, errors.New("couldn't get session"))
+			return
+		}
+
+		count, err := persist.CorrectCountForSessionId(session.Values["token"].(string))
+		if err != nil {
+			serverError(writer, errors.New("I don't even know"))
+			return
+		}
+
+		data := map[string]interface{}{
+			"Percentage": float64(count) / float64(totalQuestions) * 100.0,
+		}
+
 		if err := scoreTemplate.Execute(writer, templateParamsOnBase(data, request)); err != nil {
 			serverError(writer, err)
 		}
@@ -189,14 +212,14 @@ func handleQuizPage(router *mux.Router) {
 			return
 		}
 
-		session, err := store.Get(request, "session")
+		session, err := store.Get(request, currentSessionHeaderName)
 		if err != nil {
 			clientError(writer, errors.New("couldn't get session"))
 			return
 		}
 
 		fmt.Println(session.Values["token"])
-		persist.AnswerQuestion(*questionId, *answerIndex, session.Values["token"].(string))
+		persist.AnswerQuestion(*questionId + 1, *answerIndex, session.Values["token"].(string))
 
 		writer.WriteHeader(http.StatusOK)
 	}).Methods("POST")

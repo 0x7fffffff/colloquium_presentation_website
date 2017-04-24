@@ -39,7 +39,7 @@ func Start() {
 	router := addRoutes()
 
 	// Start the HTTP server
-	if err := http.ListenAndServe(":4000", router); err != nil {
+	if err := http.ListenAndServe(":5000", router); err != nil {
 		panic(err)
 	}
 }

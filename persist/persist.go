@@ -180,6 +180,29 @@ func AnswerQuestion(questionId int, answerIndex int, sessionId string) error {
 	}
 }
 
+func CorrectCountForSessionId(sessionId string) (int, error) {
+	query := `
+		SELECT count(*) 
+		FROM question_answer
+		INNER JOIN question
+		ON question_answer.question_id = question.id
+		WHERE question.correct_index = question_answer.answer_index
+		  AND question_answer.session_id = ?;
+	`
+
+	row := DB.QueryRow(query, sessionId)
+	if row == nil {
+		return 0, errors.New("record not found")
+	}
+
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, errors.New("Failed to find specified Question")
+	}
+
+	return count, nil
+}
+
 func FindWinners() []string {
 	return nil
 }
