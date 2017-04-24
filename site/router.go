@@ -69,7 +69,7 @@ func win() {
 	time.Sleep(5 * time.Second)
 	fmt.Println("done sleeping")
 
-	sessions, err := persist.FindWinners(3)
+	sessions, err := persist.FindWinners(1)
 	if err != nil {
 		return
 	}
