@@ -3,27 +3,27 @@
 
 
 <div class="progress">
-  <div class="progress-bar" role="progressbar" aria-valuenow="{{ percentage .CurrentQuestionIndex .TotalQuestions}}" 
+  <div class="progress-bar" role="progressbar" 
+      aria-valuenow="{{ percentage $.CurrentQuestionIndex $.TotalQuestions}}" 
       aria-valuemin="0" aria-valuemax="100" style="width: {{ percentage .CurrentQuestionIndex .TotalQuestions}}%;">
 
     <span class="sr-only">{{ percentage .CurrentQuestionIndex .TotalQuestions}}% Complete</span>
   </div>
 </div>
 
-<h1 class="question">{{ .Question.Question }}</h1>
+<h1 class="question">{{ .Question.Body }}</h1>
   <div class="btn-group-lg btn-group" data-toggle="buttons">
-    {{range $index, $element := .Question.Answers }}
+    {{range $index, $element := .Answers }}
     <br>
     <row>
       <div class="col-lg-6">
         <label class="btn btn-primary">
           <input class="answer-option" type="radio" name="options" 
-            data-answer-number="{{ $index }}" data-question-number="{{ $.CurrentQuestionIndex }}">&nbsp;&nbsp;&nbsp;{{ $element }}</label>
+            data-answer-number="{{ $index }}" data-question-number="{{ $.CurrentQuestionIndex }}">&nbsp;&nbsp;&nbsp;{{ $element.Body }}</label>
       </div>
     </row>
     {{ end }}
 </div>
-
 
 {{ end }}
 

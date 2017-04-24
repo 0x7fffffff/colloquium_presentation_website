@@ -20,6 +20,7 @@ type Question struct {
 
 type Answer struct {
 	Id 			int
+	Body 		string
 	QuestionId 	int
 	AnswerIndex int
 }
@@ -54,39 +55,7 @@ func configureDatabase(database *sql.DB) (sql.Result, error) {
 	return database.Exec(string(bytes))
 }
 
-		// create table if not exists admin (
-		// 	id integer primary key,
-		// 	handle text unique not null,
-		// 	hashed_password text not null
-		// );
-
-		// create table if not exists network (
-		// 	id integer primary key,
-		// 	listening_port integer unique not null,
-		// 	name text not null,
-		// 	timeout integer not null
-		// );
-
-		// create table if not exists encoder (
-		// 	id integer primary key,
-		// 	ip_address text not null,
-		// 	port integer not null default(23),
-		// 	name text null default ('New Encoder'),
-		// 	handle text not null,
-		// 	password text not null,
-		// 	network_id integer not null,
-		// 	foreign key(network_id) references network(id)
-		// );
-
-		// create table if not exists backup (
-		// 	id integer primary key,
-		// 	payload text not null,
-		// 	network_id integer not null,
-		// 	foreign key(network_id) references network(id)
-		// );
-
-
-func getQuestion(number int) (*Question, error) {
+func GetQuestion(number int) (*Question, error) {
 	query := `
 		SELECT id, body, number, info, correct_index
 		FROM question
@@ -106,9 +75,9 @@ func getQuestion(number int) (*Question, error) {
 	return &question, nil
 }
 
-func getAllQuestions() ([]Question, error) {
+func GetAllQuestions() ([]Question, error) {
 	query := `
-		SELECT id, body, number
+		SELECT id, body, number, info, correct_index
 		FROM question
 		ORDER BY number ASC;
 	`
@@ -138,43 +107,79 @@ func getAllQuestions() ([]Question, error) {
 	return questions, nil
 }
 
-func getAnswersForQuestionId(id int) ([]Answer, error) {
-	// query := `
-	// 	SELECT id, question_id, answer_index
-	// 	FROM answer
-	// 	ORDER BY answer_index ASC;
-	// `
+func GetAnswersForQuestion(question Question) ([]Answer, error) {
+	query := `
+		SELECT id, question_id, answer_index, body
+		FROM answer
+		WHERE question_id = ?
+		ORDER BY answer_index ASC;
+	`
 
-	return nil, nil
+	rows, err := DB.Query(query, question.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	var answers = make([]Answer, 0)
+
+	for rows.Next() {
+		var answer Answer
+
+		if err = rows.Scan(&answer.Id, &answer.QuestionId, &answer.AnswerIndex, &answer.Body); err != nil {
+			log.Fatal(err)
+			continue
+		}
+
+		answers = append(answers, answer)
+	}
+
+	if err = rows.Close(); err != nil {
+		return nil, err
+	}
+
+	return answers, nil
 }
 
+func AnswerQuestion(questionId int, answerIndex int, sessionId string) error {
+	query := `
+		SELECT id
+		FROM question_answer
+		WHERE question_id = ?
+			AND session_id = ?;		
+	`
 
+	row := DB.QueryRow(query, questionId, sessionId)
+	var id int
+	err := row.Scan(&id)
 
-// import (
-// 	"encoding/json"
-// 	"fmt"
-// 	"io/ioutil"
-// )
+	switch {
+	case err == sql.ErrNoRows:
+		insert := `
+			INSERT INTO question_answer (
+				question_id, answer_index, session_id
+			) VALUES (
+				?, ?, ?
+			);
+		`
 
-// type quiz struct {
-// 	Data []Question
-// }
+		_, err := DB.Exec(insert, questionId, answerIndex, sessionId)
+		return err
+	case err != nil:
+		return err
+	default:
+		update := `
+			UPDATE question_answer
+				SET
+					answer_index = ?
+				WHERE
+					id = ?;
+		`
 
-// type Question struct {
-// 	Question		string
-// 	Answers			[]string
-// 	CorrectIndex	int
-// }
+		_, err := DB.Exec(update, answerIndex, id)
+		return err
+	}
+}
 
-// func getQuiz() []Question {
-// 	file, err := ioutil.ReadFile("./quiz.json")
-//     if err != nil {
-//         fmt.Printf("JSON loading error: %v\n", err)
-//         return nil
-//     }
-
-//     var quizJSON quiz
-//     json.Unmarshal(file, &quizJSON)
-
-//     return quizJSON.Data
-// }
+func FindWinners() []string {
+	return nil
+}

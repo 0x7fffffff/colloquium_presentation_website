@@ -5,17 +5,17 @@ $(function() {
   $('.answer-option').change(function(event) {
     event.preventDefault();
 
-    var question_number = $(event.target).attr('data-answer-number');
-    var data = $().serializeArray();
-    data.push({
-      selected_answer: $(event.target).attr('data-answer-number')
-    });
+    var question_number = $(event.target).attr('data-question-number');
+    var answer_number = $(event.target).attr('data-answer-number');
+    // var data = $().serializeArray();
+    // data.push({
+    //   selected_answer: 
+    // });
 
     $.ajax({
-      url: '/question/' + question_number + '/answer',
+      url: '/question/' + question_number + '/answer/' + answer_number,
       type: 'POST',
-      dataType: 'json',
-      data: $.param(data),
+      // data: $.param(data),
     }).done(function(response) {
       console.log(response);
     }).fail(alertAjaxFailure);

@@ -21,9 +21,10 @@ create table if not exists answer (
 
 create table if not exists question_answer (
 	id integer primary key,
-	question_id integer not null,
 	session_id text not null,
-	answer_index integer not null
+	answer_index integer not null,
+	question_id integer not null,
+	foreign key(question_id) references question(id)
 );
 
 insert into question (body, number, correct_index, info) values ("In parts per million (ppm), what is the concentration of carbon dioxide in the atmosphere today?", 0, 3, "Carbon dioxide concentration in the atmosphere was measured at 280 ppm before industrialization. This is an increase in over 120 ppm, or 44.9%, in about 200 years.");

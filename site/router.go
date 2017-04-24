@@ -12,17 +12,28 @@ import (
 	"strconv"
 	// "bytes"
 
+	"github.com/0x7fffffff/colloquium_presentation_website/persist"
 	"github.com/0x7fffffff/colloquium_presentation_website/websocket"
 	"github.com/gorilla/mux"
+	"github.com/nu7hatch/gouuid"
 )
 
 var currentQuestion = 0
-var totalQuestions = len(getQuiz())
+var totalQuestions int
+
+func init() {
+	questions, err := persist.GetAllQuestions()
+	if err != nil {
+		totalQuestions = 0
+	} else {
+		totalQuestions = len(questions)
+	}
+}
 
 func templateOnBase(path string) *template.Template {
 	funcMap := template.FuncMap{
-		"percentage": func(x, y int) int {
-			return x / y * 100.0
+		"percentage": func(x, y int) float64 {
+			return float64(x) / float64(y) * 100.0
 		},
 	}
 
@@ -97,9 +108,7 @@ func handleQuizPage(router *mux.Router) {
 			return
 		}
 
-		quiz := getQuiz()
-
-		if *id > len(quiz) - 1 {
+		if *id > totalQuestions - 1 {
 			http.Redirect(writer, request, "/score", http.StatusSeeOther)
 			return
 		}
@@ -115,8 +124,21 @@ func handleQuizPage(router *mux.Router) {
 			return			
 		}
 
+		question, err := persist.GetQuestion(*id)
+		if err != nil {
+			clientError(writer, errors.New("Invalid question id"))
+			return			
+		}
+
+		answers, err := persist.GetAnswersForQuestion(*question)
+		if err != nil {
+			clientError(writer, errors.New("Invalid question id"))
+			return						
+		}
+
 		data := map[string]interface{}{
-			"Question": quiz[*id],
+			"Question": *question,
+			"Answers": answers,
 		}
 
 		session, err := store.Get(request, "session")
@@ -126,6 +148,14 @@ func handleQuizPage(router *mux.Router) {
 		}
 
 		if session.IsNew {
+			uuid, err := uuid.NewV4()
+			if err != nil {
+				serverError(writer, errors.New("Couldn't generate user key"))
+				return
+			}
+
+			session.Values["token"] = uuid.String()
+
 			if err = session.Save(request, writer); err != nil {
 				clientError(writer, errors.New("couldn't update session"))
 				return
@@ -146,24 +176,29 @@ func handleQuizPage(router *mux.Router) {
 		}
 	}).Methods("GET")
 
-	router.HandleFunc("/question/{question_id:[0-9]+}/answer", func(writer http.ResponseWriter, request *http.Request) {
-		if err := request.ParseForm(); err != nil {
-			clientError(writer, err)
-			return
-		}
-
-		id := identifierFromRequest("question_id", request)
-		if id == nil {
+	router.HandleFunc("/question/{question_id:[0-9]+}/answer/{answer_index:[0-9]+}", func(writer http.ResponseWriter, request *http.Request) {
+		questionId := identifierFromRequest("question_id", request)
+		if questionId == nil {
 			clientError(writer, errors.New("Missing question identifier"))
 			return
 		}
 
-		_, err := store.Get(request, "session")
+		answerIndex := identifierFromRequest("answer_index", request)
+		if answerIndex == nil {
+			clientError(writer, errors.New("Missing answer index"))
+			return
+		}
+
+		session, err := store.Get(request, "session")
 		if err != nil {
 			clientError(writer, errors.New("couldn't get session"))
 			return
 		}
 
+		fmt.Println(session.Values["token"])
+		persist.AnswerQuestion(*questionId, *answerIndex, session.Values["token"].(string))
+
+		writer.WriteHeader(http.StatusOK)
 	}).Methods("POST")
 }
 // adds all the routes to the router.
