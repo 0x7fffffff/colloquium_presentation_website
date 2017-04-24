@@ -3,6 +3,7 @@ package persist
 import (
 	"database/sql"
 	"errors"
+	"io/ioutil"
 	"log"
 
 	// Linter
@@ -45,34 +46,12 @@ func init() {
 }
 
 func configureDatabase(database *sql.DB) (sql.Result, error) {
-	ddl := `
-		create table if not exists question (
-			id integer primary key,
-			body text not null,
-			number integer not null,
-			correct_index integer not null,
-			info text not null
-		);
+	bytes, err := ioutil.ReadFile("./persist/ddl.sql")
+	if err != nil {
+		return nil, err
+	}
 
-		create table if not exists answer (
-			id integer primary key,
-			answer_index integer not null,
-			question_id integer not null,
-			foreign key(question_id) references question(id)
-		);
-
-		create table if not exists question_answer (
-			id integer primary key,
-			question_id integer not null,
-			session_id text not null,
-			answer_index integer not null
-		);
-	`
-
-	// bytes, err := ioutil.ReadFile("sql/create_tables.sql")
-	// checkErr(err)
-
-	return database.Exec(ddl)
+	return database.Exec(string(bytes))
 }
 
 		// create table if not exists admin (
