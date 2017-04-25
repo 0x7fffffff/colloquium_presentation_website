@@ -1,6 +1,7 @@
 {{ define "title" }}Environmental Quiz{{ end }}
 {{ define "content" }}
 
+<div id="current-question-index" data-question-id="{{ $.CurrentQuestionIndex }}">
 
 <div class="progress">
   <div class="progress-bar" role="progressbar" 
@@ -10,6 +11,8 @@
     <span class="sr-only">{{ percentage .CurrentQuestionIndex .TotalQuestions}}% Complete</span>
   </div>
 </div>
+
+<h2 id="countdown"></h2>
 
 <h1 class="question">{{ .Question.Body }}</h1>
   <div class="btn-group-lg btn-group" data-toggle="buttons">

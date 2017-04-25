@@ -2,6 +2,8 @@ $(function() {
   startWebSocket();
   autoStopWebSocket();
 
+  $("input[type=radio]").attr('disabled', false);
+
   $('.answer-option').change(function(event) {
     event.preventDefault();
 
@@ -19,7 +21,34 @@ $(function() {
     }).done(function(response) {
       console.log(response);
     }).fail(alertAjaxFailure);
-  }); 
+  });
+
+  var idxStr = $('#current-question-index').attr('data-question-id');
+  if (idxStr != null && parseInt(idxStr) > 0) {
+    $('#countdown').text('30 seconds remaining');
+
+    var countDownDate = new Date().getTime() + 30000;
+    var x = setInterval(function() {
+
+        var now = new Date().getTime();
+        var distance = countDownDate - now;    
+        var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        
+        if (seconds == 1) {
+          $('#countdown').text(seconds + ' second remaining');
+        } else {
+          $('#countdown').text(seconds + ' seconds remaining');
+        }
+        
+        if (distance < 0) {
+          clearInterval(x);
+          $('#countdown').text('Time\'s up!');
+          $("input[type=radio]").attr('disabled', true);
+        }
+    }, 1000);    
+  } else {
+    $('#countdown').text('');
+  }
 });
 
 function startWebSocket() {
